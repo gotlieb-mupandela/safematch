@@ -192,11 +192,14 @@ export default function App() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "auto" });
     scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
     window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "auto" });
       scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
     });
     window.setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "auto" });
       scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
     }, 80);
   };
@@ -405,7 +408,7 @@ export default function App() {
 
   return (
     <>
-      <main className="grid h-dvh place-items-center overflow-hidden bg-slate-100 sm:p-4">
+      <main className="min-h-dvh overflow-x-hidden bg-slate-100 sm:grid sm:h-dvh sm:place-items-center sm:overflow-hidden sm:p-4">
         <div className="phone-frame">
           <div className="phone-camera" aria-hidden="true" />
           <div className="phone-screen relative flex flex-col overflow-hidden bg-[#fbfdff]">
