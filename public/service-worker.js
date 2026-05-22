@@ -1,4 +1,4 @@
-const CACHE_NAME = "safematch-prototype-v1";
+const CACHE_NAME = "safematch-prototype-v2";
 const APP_SHELL = ["/", "/index.html", "/site.webmanifest", "/safematch-icon.svg"];
 
 self.addEventListener("install", (event) => {

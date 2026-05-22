@@ -892,6 +892,7 @@ function VerificationProgressScreen({
         status={liveVerificationStatus}
         onStatusChange={onLiveVerificationStatusChange}
         showToast={showToast}
+        onComplete={onComplete}
       />
       <div className="relative mt-9">
         <LeafSprig className="left-0 top-36 text-aqua" />
@@ -922,10 +923,12 @@ function LiveVerificationCard({
   status,
   onStatusChange,
   showToast,
+  onComplete,
 }: {
   status: LiveVerificationStatus;
   onStatusChange: (status: LiveVerificationStatus) => void;
   showToast: (message: string) => void;
+  onComplete: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -1059,9 +1062,19 @@ function LiveVerificationCard({
       <div className="space-y-3 p-4">
         {noticeText ? <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-[13px] font-extrabold leading-5 text-ocean">{noticeText}</p> : null}
         {status === "passed" ? (
-          <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-[14px] font-extrabold text-aqua">
-            <ShieldCheck className="h-5 w-5" />
-            Ready to complete verification
+          <div className="space-y-3">
+            <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-[14px] font-extrabold text-aqua">
+              <ShieldCheck className="h-5 w-5" />
+              Ready to complete verification
+            </div>
+            <PrimaryButton
+              className="min-h-[50px] rounded-2xl text-[15px]"
+              onClick={onComplete}
+              leftIcon={ShieldCheck}
+              rightIcon={ArrowRight}
+            >
+              Finish Verification
+            </PrimaryButton>
           </div>
         ) : (
           <>
