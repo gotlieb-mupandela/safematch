@@ -902,8 +902,8 @@ function VerificationProgressScreen({
         This prototype checks device permission and liveness flow only. It does not verify a legal identity.
       </InfoNote>
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-        <StatusRow Icon={Camera} text="Camera preview permission" done={liveVerificationStatus === "active" || liveVerificationStatus === "checking" || canComplete} />
-        <StatusRow Icon={Eye} text="Live presence check" done={canComplete} loading={liveVerificationStatus === "checking"} />
+        <StatusRow Icon={Camera} text="Camera preview or safe fallback" done={liveVerificationStatus === "active" || liveVerificationStatus === "checking" || canComplete} />
+        <StatusRow Icon={Eye} text="Presence check completed" done={canComplete} loading={liveVerificationStatus === "checking"} />
         <StatusRow Icon={Lock} text="No media saved or uploaded" done={canComplete} last />
       </div>
       <div className="mt-6 space-y-3">
@@ -929,7 +929,7 @@ function LiveVerificationCard({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [errorText, setErrorText] = useState("");
+  const [noticeText, setNoticeText] = useState("");
 
   const stopStream = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -942,11 +942,13 @@ function LiveVerificationCard({
   useEffect(() => stopStream, []);
 
   const startLivePreview = async () => {
-    setErrorText("");
+    setNoticeText("");
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      onStatusChange("unsupported");
-      setErrorText("Camera access is not supported in this browser.");
+      stopStream();
+      onStatusChange("passed");
+      setNoticeText("Camera preview is not available in this browser. SafeMatch used the prototype-safe fallback and stored no media.");
+      showToast("Prototype fallback used. No camera media was collected.");
       return;
     }
 
@@ -970,8 +972,9 @@ function LiveVerificationCard({
       showToast("Live preview started. No media is being recorded.");
     } catch {
       stopStream();
-      onStatusChange("blocked");
-      setErrorText("Camera permission was blocked or unavailable. Nothing was stored.");
+      onStatusChange("passed");
+      setNoticeText("Camera preview was unavailable in this browser. SafeMatch used the prototype-safe fallback and stored no media.");
+      showToast("Prototype fallback used. No camera media was collected.");
     }
   };
 
@@ -992,6 +995,7 @@ function LiveVerificationCard({
   const usePrototypeFallback = () => {
     stopStream();
     onStatusChange("passed");
+    setNoticeText("Prototype-safe fallback is ready. No camera media was collected or stored.");
     showToast("Prototype fallback approved. No camera media was collected.");
   };
 
@@ -1013,8 +1017,8 @@ function LiveVerificationCard({
       text: "Hold still for a moment while the local-only prototype check completes.",
     },
     passed: {
-      title: "Live check complete",
-      text: "The camera stream has stopped. No image or video was stored.",
+      title: "Verification check ready",
+      text: "You can complete verification. No image or video was stored.",
     },
     blocked: {
       title: "Camera unavailable",
@@ -1053,33 +1057,42 @@ function LiveVerificationCard({
         ) : null}
       </div>
       <div className="space-y-3 p-4">
-        {errorText ? <p className="rounded-2xl bg-orange-50 px-4 py-3 text-[13px] font-extrabold leading-5 text-caution">{errorText}</p> : null}
-        <PrimaryButton
-          className="min-h-[50px] rounded-2xl text-[15px]"
-          onClick={usePrototypeFallback}
-          leftIcon={ShieldCheck}
-          rightIcon={Check}
-        >
-          Use Prototype Fallback
-        </PrimaryButton>
-        <div className="grid grid-cols-2 gap-3">
-          <SecondaryButton
-            className="min-h-[50px] rounded-[16px] text-[15px]"
-            onClick={startLivePreview}
-            leftIcon={Camera}
-            rightIcon={null}
-          >
-            Start Preview
-          </SecondaryButton>
-          <SecondaryButton
-            className="min-h-[50px] rounded-[16px] text-[15px]"
-            onClick={runLiveCheck}
-            leftIcon={Eye}
-            rightIcon={null}
-          >
-            Run Check
-          </SecondaryButton>
-        </div>
+        {noticeText ? <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-[13px] font-extrabold leading-5 text-ocean">{noticeText}</p> : null}
+        {status === "passed" ? (
+          <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-[14px] font-extrabold text-aqua">
+            <ShieldCheck className="h-5 w-5" />
+            Ready to complete verification
+          </div>
+        ) : (
+          <>
+            <PrimaryButton
+              className="min-h-[50px] rounded-2xl text-[15px]"
+              onClick={usePrototypeFallback}
+              leftIcon={ShieldCheck}
+              rightIcon={Check}
+            >
+              Use Prototype Fallback
+            </PrimaryButton>
+            <div className="grid grid-cols-2 gap-3">
+              <SecondaryButton
+                className="min-h-[50px] rounded-[16px] text-[15px]"
+                onClick={startLivePreview}
+                leftIcon={Camera}
+                rightIcon={null}
+              >
+                Start Preview
+              </SecondaryButton>
+              <SecondaryButton
+                className="min-h-[50px] rounded-[16px] text-[15px]"
+                onClick={runLiveCheck}
+                leftIcon={Eye}
+                rightIcon={null}
+              >
+                Run Check
+              </SecondaryButton>
+            </div>
+          </>
+        )}
         <p className="text-center text-[12px] font-bold leading-5 text-ink/45">
           Privacy guardrail: this screen never writes camera media to localStorage.
         </p>
