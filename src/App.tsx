@@ -250,26 +250,26 @@ export default function App() {
     setLiveVerificationStatus("idle");
     updateVerification("in_progress");
     navigate("verification_progress");
-    showToast("Verification started. Camera media is preview-only and is not stored.");
+    showToast("Camera check started.");
   };
 
   const completeVerification = () => {
     if (liveVerificationStatus !== "passed") {
-      showToast("Complete the live privacy check before finishing verification.");
+      showToast("Wait for the live check.");
       return;
     }
 
     updateVerification("completed");
     updateVerified(true);
     navigate("verified_profile");
-    showToast("Verification completed. No selfie or video was stored.");
+    showToast("Verified. No media saved.");
   };
 
   const cancelVerification = () => {
     setLiveVerificationStatus("idle");
     updateVerification("not_started");
     navigate("verify_profile");
-    showToast("Verification reset for prototype testing.");
+    showToast("Verification reset.");
   };
 
   const selectReportReason = (reason: string) => {
@@ -288,7 +288,7 @@ export default function App() {
 
   const submitReport = () => {
     if (!selectedReportReason) {
-      const message = "Please select a reason before submitting.";
+      const message = "Choose a reason first.";
       setReportValidation(message);
       showToast(message);
       return;
@@ -309,7 +309,7 @@ export default function App() {
     localStorage.setItem(KEYS.reports, JSON.stringify(nextReports));
     touch();
     navigate("report_confirmation");
-    showToast("Mock report saved locally in this browser.");
+    showToast("Report saved locally.");
   };
 
   const clearReportDraft = () => {
@@ -340,7 +340,7 @@ export default function App() {
     localStorage.setItem(KEYS.reportDetails, "");
     touch();
     scrollToTop();
-    showToast("Prototype reset. Local reports were kept.");
+    showToast("Prototype reset.");
   };
 
   const clearLocalData = () => {
@@ -358,7 +358,7 @@ export default function App() {
     setReportValidation("");
     setLiveVerificationStatus("idle");
     scrollToTop();
-    showToast("All SafeMatch prototype data was cleared.");
+    showToast("Data cleared.");
   };
 
   const screen = useMemo(() => {
@@ -535,11 +535,11 @@ function ScreenTitle({
   compact?: boolean;
 }) {
   return (
-    <div className={compact ? "mt-6 text-center" : "mt-7 text-center"}>
+    <div className={compact ? "mt-5 text-center" : "mt-6 text-center"}>
       <h1 className="text-balance break-words text-[32px] font-extrabold leading-tight text-navy">
         {title}
       </h1>
-      {subtitle ? <p className="mx-auto mt-3 max-w-[330px] text-[16px] leading-6 text-ink/70">{subtitle}</p> : null}
+      {subtitle ? <p className="mx-auto mt-2 max-w-[300px] text-[15px] leading-6 text-ink/65">{subtitle}</p> : null}
     </div>
   );
 }
@@ -659,9 +659,9 @@ function InfoNote({
   }[tone];
 
   return (
-    <div className={`flex items-center gap-4 rounded-[20px] border px-5 py-4 shadow-sm ${toneClass} ${className}`}>
-      <Info className={`h-8 w-8 shrink-0 ${iconClass}`} />
-      <p className="text-[15px] font-semibold leading-6">{children}</p>
+    <div className={`flex items-center gap-3 rounded-[18px] border px-4 py-3 shadow-sm ${toneClass} ${className}`}>
+      <Info className={`h-5 w-5 shrink-0 ${iconClass}`} />
+      <p className="text-[13px] font-bold leading-5">{children}</p>
     </div>
   );
 }
@@ -702,7 +702,7 @@ function WelcomeScreen({ navigate, showToast }: ScreenProps) {
           SafeMatch
         </h1>
         <p className="mt-3 text-[17px] leading-6 text-ink/70">
-          Connect with real people, <span className="font-extrabold text-aqua">safely.</span>
+          Real profiles. Safer chats.
         </p>
       </div>
 
@@ -710,19 +710,19 @@ function WelcomeScreen({ navigate, showToast }: ScreenProps) {
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-3 py-4 shadow-sm">
         <div className="grid grid-cols-3 divide-x divide-slate-100 text-center">
-          <FeatureCard Icon={UserCheck} title="Verify Profiles" text="Authentic people, real connections" />
-          <FeatureCard Icon={Star} title="Trust Indicators" text="See signals before you trust" />
-          <FeatureCard Icon={Flag} title="Report Safely" text="Help keep the community safe" />
+          <FeatureCard Icon={UserCheck} title="Verify" text="Live check" />
+          <FeatureCard Icon={Star} title="Trust" text="92/100" />
+          <FeatureCard Icon={Flag} title="Report" text="Local only" />
         </div>
       </div>
 
-      <p className="mx-auto mt-6 max-w-[340px] text-center text-[16px] font-medium leading-6 text-ink/75">
-        Verify profiles, check trust indicators, and report <span className="font-extrabold text-ocean">suspicious accounts</span> before investing time or personal information.
+      <p className="mx-auto mt-5 max-w-[300px] text-center text-[15px] font-semibold leading-6 text-ink/65">
+        Check trust before you invest time.
       </p>
 
       <div className="mt-6 space-y-3">
         <PrimaryButton onClick={() => navigate("verify_profile")}>Get Started</PrimaryButton>
-        <SecondaryButton onClick={() => showToast("SafeMatch helps users identify verified profiles before chatting.")}>
+        <SecondaryButton onClick={() => showToast("Check profiles before chatting.")}>
           Learn More
         </SecondaryButton>
       </div>
@@ -737,17 +737,14 @@ function WelcomeHero() {
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-ocean">
         <ShieldCheck className="h-9 w-9" />
       </div>
-      <h2 className="mt-4 text-[20px] font-extrabold text-ink">Check trust before chatting</h2>
-      <p className="mx-auto mt-2 max-w-[280px] text-[14px] font-medium leading-6 text-ink/65">
-        Verify your profile, review trust indicators, and report suspicious accounts from one simple flow.
-      </p>
+      <h2 className="mt-4 text-[20px] font-extrabold text-ink">Trust at a glance</h2>
       <div className="mt-4 grid grid-cols-2 gap-3 text-left">
         <div className="rounded-xl bg-emerald-50 p-3">
-          <p className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Verified</p>
+          <p className="text-[12px] font-bold uppercase tracking-wide text-emerald-700">Sara</p>
           <p className="mt-1 text-[18px] font-extrabold text-ink">92/100</p>
         </div>
         <div className="rounded-xl bg-orange-50 p-3">
-          <p className="text-[12px] font-bold uppercase tracking-wide text-caution">Warning</p>
+          <p className="text-[12px] font-bold uppercase tracking-wide text-caution">Alex</p>
           <p className="mt-1 text-[18px] font-extrabold text-ink">Unverified</p>
         </div>
       </div>
@@ -790,9 +787,9 @@ function HeroProfileMiniCard({
 function FeatureCard({ Icon, title, text }: { Icon: LucideIcon; title: string; text: string }) {
   return (
     <div className="px-2">
-      <IconBubble Icon={Icon} className="mx-auto bg-emerald-50" iconClass="text-aqua" />
-      <h2 className="mt-3 text-[15px] font-extrabold leading-5 text-ink">{title}</h2>
-      <p className="mt-1 text-[13px] font-medium leading-5 text-ink/70">{text}</p>
+      <IconBubble Icon={Icon} className="mx-auto h-12 w-12 bg-emerald-50" iconClass="h-6 w-6 text-aqua" />
+      <h2 className="mt-3 text-[14px] font-extrabold leading-5 text-ink">{title}</h2>
+      <p className="mt-1 text-[12px] font-semibold leading-4 text-ink/55">{text}</p>
     </div>
   );
 }
@@ -803,16 +800,16 @@ function VerifyProfileScreen({ navigate, onStart }: ScreenProps & { onStart: () 
       <ScreenHeader />
       <ScreenTitle
         title="Verify Profile"
-        subtitle="Complete a quick verification to build trust and safety."
+        subtitle="A quick live camera check."
       />
       <VerifyHero />
-      <div className="-mt-1 rounded-[28px] bg-white/95 px-5 py-5 shadow-soft">
-        <StepRow Icon={Camera} number="1" title="Take a selfie" text="Capture a clear photo of your face." />
-        <StepRow Icon={Video} number="2" title="Record a short video" text="Record a brief video to confirm you're a real person." />
-        <StepRow Icon={CreditCard} number="3" title="Confirm your identity" text="Review and confirm your details for added security." last />
+      <div className="-mt-1 rounded-[24px] bg-white/95 px-5 py-4 shadow-soft">
+        <StepRow Icon={Camera} number="1" title="Camera opens" text="Live preview only." />
+        <StepRow Icon={Eye} number="2" title="Auto-check" text="Runs in memory." />
+        <StepRow Icon={ShieldCheck} number="3" title="Verified" text="No media saved." last />
       </div>
       <InfoNote className="mt-6">
-        Production-prototype mode: the next step can request camera access for a live preview check. No selfie, video, ID, or biometric data is saved.
+        No photos, videos, IDs, or biometrics are stored.
       </InfoNote>
       <div className="mt-6 space-y-4">
         <PrimaryButton onClick={onStart}>Start Verification</PrimaryButton>
@@ -831,10 +828,8 @@ function VerifyHero() {
           <Camera className="h-7 w-7" />
         </div>
         <div>
-          <h2 className="text-[18px] font-extrabold text-ink">Privacy-first live check</h2>
-          <p className="mt-1 text-[14px] font-medium leading-5 text-ink/65">
-            Preview your camera, run a local liveness-style check, then stop the stream.
-          </p>
+          <h2 className="text-[18px] font-extrabold text-ink">Live camera check</h2>
+          <p className="mt-1 text-[14px] font-semibold leading-5 text-ink/60">Automatic. Local. Temporary.</p>
         </div>
       </div>
     </div>
@@ -855,15 +850,15 @@ function StepRow({
   last?: boolean;
 }) {
   return (
-    <div className={`flex gap-4 ${last ? "" : "border-b border-blue-100 pb-5 mb-5"}`}>
-      <IconBubble Icon={Icon} className={number === "2" ? "bg-emerald-50" : number === "3" ? "bg-violet-50" : "bg-blue-50"} iconClass={number === "2" ? "text-aqua" : number === "3" ? "text-violet-500" : "text-ocean"} />
+    <div className={`flex gap-3 ${last ? "" : "border-b border-blue-100 pb-4 mb-4"}`}>
+      <IconBubble Icon={Icon} className={number === "2" ? "h-12 w-12 bg-emerald-50" : number === "3" ? "h-12 w-12 bg-violet-50" : "h-12 w-12 bg-blue-50"} iconClass={number === "2" ? "h-6 w-6 text-aqua" : number === "3" ? "h-6 w-6 text-violet-500" : "h-6 w-6 text-ocean"} />
       <div className="flex flex-1 gap-3">
-        <span className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white ${number === "2" ? "bg-aqua" : number === "3" ? "bg-violet-500" : "bg-ocean"}`}>
+        <span className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white ${number === "2" ? "bg-aqua" : number === "3" ? "bg-violet-500" : "bg-ocean"}`}>
           {number}
         </span>
         <div>
-          <h2 className="text-[18px] font-extrabold leading-6 text-ink">{title}</h2>
-          <p className="mt-1 text-[15px] font-medium leading-6 text-ink/70">{text}</p>
+          <h2 className="text-[16px] font-extrabold leading-5 text-ink">{title}</h2>
+          <p className="mt-0.5 text-[13px] font-semibold leading-5 text-ink/55">{text}</p>
         </div>
       </div>
     </div>
@@ -908,28 +903,29 @@ function VerificationProgressScreen({
   return (
     <section className="pb-6">
       <ScreenHeader />
-      <ScreenTitle title="Live Verification" subtitle="Camera check runs automatically. Nothing is stored." compact />
+      <ScreenTitle title="Live Check" subtitle="Look at the camera." compact />
       <LiveVerificationCard
         status={liveVerificationStatus}
         onStatusChange={onLiveVerificationStatusChange}
         showToast={showToast}
       />
-      <div className="relative mt-9">
-        <LeafSprig className="left-0 top-36 text-aqua" />
-        <LeafSprig className="right-0 top-36 scale-x-[-1] text-blue-300" />
-        <ProgressRing percent={progressPercent[liveVerificationStatus]} />
-      </div>
-      <InfoNote className="mx-auto mt-5 max-w-[330px]">
-        This prototype uses the live camera stream for a local visual check only. No photo or video is stored.
-      </InfoNote>
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-        <StatusRow Icon={Camera} text="Live camera preview" done={liveVerificationStatus === "active" || liveVerificationStatus === "checking" || canComplete} loading={liveVerificationStatus === "requesting"} />
-        <StatusRow Icon={Eye} text="Automatic presence check" done={canComplete} loading={liveVerificationStatus === "checking"} />
-        <StatusRow Icon={Lock} text="No media saved or uploaded" done={canComplete} last />
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="text-[13px] font-extrabold text-ink/55">Progress</span>
+          <span className="text-[18px] font-extrabold text-ocean">{progressPercent[liveVerificationStatus]}%</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-blue-50">
+          <div className="h-full rounded-full bg-ocean transition-all duration-300" style={{ width: `${progressPercent[liveVerificationStatus]}%` }} />
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] font-extrabold text-ink/55">
+          <span className={liveVerificationStatus === "active" || liveVerificationStatus === "checking" || canComplete ? "text-aqua" : ""}>Camera</span>
+          <span className={liveVerificationStatus === "checking" || canComplete ? "text-aqua" : ""}>Check</span>
+          <span className={canComplete ? "text-aqua" : ""}>Done</span>
+        </div>
       </div>
       <div className="mt-6 space-y-3">
         <p className="text-center text-[14px] font-extrabold text-ink/55">
-          {canComplete ? "Verification passed. Opening the verified profile..." : "Keep your face centered while SafeMatch checks automatically."}
+          {canComplete ? "Passed. Opening profile..." : "No media saved."}
         </p>
         <SecondaryButton onClick={onCancel} rightIcon={null}>Cancel</SecondaryButton>
       </div>
@@ -954,7 +950,7 @@ function LiveVerificationCard({
   const runIdRef = useRef(0);
   const retryTimerRef = useRef<number | null>(null);
   const [noticeText, setNoticeText] = useState("");
-  const [analysisMessage, setAnalysisMessage] = useState("Starting secure camera preview...");
+  const [analysisMessage, setAnalysisMessage] = useState("Starting camera...");
   const [checkProgress, setCheckProgress] = useState(0);
 
   const stopStream = () => {
@@ -1071,7 +1067,7 @@ function LiveVerificationCard({
 
     onStatusChange("checking");
     setNoticeText("");
-    setAnalysisMessage("Checking live frames automatically...");
+    setAnalysisMessage("Checking...");
     setCheckProgress(45);
 
     const [metrics, faceDetected] = await Promise.all([
@@ -1090,19 +1086,19 @@ function LiveVerificationCard({
 
     if (faceDetected === true || readableVideo) {
       setCheckProgress(100);
-      setAnalysisMessage(faceDetected === true ? "Face detected. Verification passed." : "Live camera frames verified. Verification passed.");
+      setAnalysisMessage(faceDetected === true ? "Face detected." : "Live frames checked.");
       await delay(450);
       if (!isRunCurrent(runId)) return;
       stopStream();
       onStatusChange("passed");
-      showToast("Live camera check passed. No photo or video was saved.");
+      showToast("Live check passed.");
       return;
     }
 
     onStatusChange("active");
     setCheckProgress(35);
-    setNoticeText("The camera is open, but the image is too dark or unclear. Move into better light and keep your face centered.");
-    setAnalysisMessage("Waiting for a clearer live camera frame...");
+    setNoticeText("Too dark or unclear. Improve lighting.");
+    setAnalysisMessage("Need a clearer view.");
     clearRetryTimer();
     retryTimerRef.current = window.setTimeout(() => {
       if (isRunCurrent(runId)) {
@@ -1118,19 +1114,19 @@ function LiveVerificationCard({
     const runId = runIdRef.current;
     setNoticeText("");
     setCheckProgress(8);
-    setAnalysisMessage("Opening secure camera preview...");
+    setAnalysisMessage("Opening camera...");
 
     if (!navigator.mediaDevices?.getUserMedia) {
       onStatusChange("unsupported");
       setCheckProgress(0);
-      setAnalysisMessage("Camera preview is not supported in this browser.");
-      setNoticeText("Use a browser with camera support, then open SafeMatch again. No media was collected.");
+      setAnalysisMessage("Camera unavailable.");
+      setNoticeText("Use a browser with camera access.");
       return;
     }
 
     try {
       onStatusChange("requesting");
-      setAnalysisMessage("Waiting for camera permission...");
+      setAnalysisMessage("Waiting for permission...");
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
@@ -1156,8 +1152,8 @@ function LiveVerificationCard({
 
       onStatusChange("active");
       setCheckProgress(35);
-      setAnalysisMessage("Camera is live. Keep your face centered.");
-      showToast("Live camera preview started. The check will run automatically.");
+      setAnalysisMessage("Center your face.");
+      showToast("Camera started.");
       window.setTimeout(() => {
         if (isRunCurrent(runId)) {
           void runAutomaticCheck(runId);
@@ -1167,8 +1163,8 @@ function LiveVerificationCard({
       stopStream();
       onStatusChange("blocked");
       setCheckProgress(0);
-      setAnalysisMessage("Camera access is blocked.");
-      setNoticeText("SafeMatch needs camera permission to show your face and run the live check. Allow camera access in the browser, then tap Retry Camera.");
+      setAnalysisMessage("Camera blocked.");
+      setNoticeText("Allow camera access, then retry.");
     }
   };
 
@@ -1202,31 +1198,31 @@ function LiveVerificationCard({
   const statusCopy: Record<LiveVerificationStatus, { title: string; text: string }> = {
     idle: {
       title: "Starting camera",
-      text: "SafeMatch will open the camera and run the check automatically.",
+      text: "This starts automatically.",
     },
     requesting: {
-      title: "Allow camera access",
-      text: "The preview uses video only. Audio is never requested.",
+      title: "Allow camera",
+      text: "Video only.",
     },
     active: {
-      title: "Camera preview is live",
-      text: "Keep your face centered while the check starts.",
+      title: "Camera live",
+      text: "Center your face.",
     },
     checking: {
-      title: "Checking automatically",
-      text: "SafeMatch is reading live frames locally. Nothing is saved.",
+      title: "Checking",
+      text: "Local only.",
     },
     passed: {
-      title: "Live check complete",
-      text: "The camera stream stopped. Opening your verified profile now.",
+      title: "Passed",
+      text: "Opening profile.",
     },
     blocked: {
-      title: "Camera permission needed",
-      text: "Enable camera access so the prototype can display your face.",
+      title: "Camera blocked",
+      text: "Allow access to continue.",
     },
     unsupported: {
-      title: "Camera not supported",
-      text: "This browser cannot run the live preview.",
+      title: "Camera unavailable",
+      text: "Try another browser.",
     },
   };
   const cameraVisible = status === "requesting" || status === "active" || status === "checking";
@@ -1269,7 +1265,7 @@ function LiveVerificationCard({
         )}
         {status === "checking" ? (
           <div className="pointer-events-none absolute inset-0 grid place-items-center bg-ink/10">
-            <div className="rounded-full bg-white/95 px-5 py-3 text-[15px] font-extrabold text-ink shadow-soft">Auto-checking...</div>
+            <div className="rounded-full bg-white/95 px-5 py-3 text-[15px] font-extrabold text-ink shadow-soft">Checking...</div>
           </div>
         ) : null}
       </div>
@@ -1287,11 +1283,11 @@ function LiveVerificationCard({
         ) : (
           <div className="flex items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 text-[14px] font-extrabold text-ocean">
             {status === "passed" ? <ShieldCheck className="h-5 w-5 text-aqua" /> : <Eye className="h-5 w-5" />}
-            {status === "passed" ? "Passed. Redirecting..." : "Automatic check in progress"}
+            {status === "passed" ? "Passed" : "Checking automatically"}
           </div>
         )}
         <p className="text-center text-[12px] font-bold leading-5 text-ink/45">
-          Privacy guardrail: video frames are checked in memory only and are never stored.
+          No video is stored.
         </p>
       </div>
     </div>
@@ -1342,7 +1338,7 @@ function VerifiedProfileScreen({ navigate, showToast, isVerified }: ScreenProps 
   return (
     <section className="pb-6">
       <ScreenHeader />
-      <ScreenTitle title="Verified Profile" subtitle="Real people. Safer connections." />
+      <ScreenTitle title="Verified Profile" subtitle="Safe to continue." />
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-4">
           <ProfileAvatar verified />
@@ -1367,15 +1363,15 @@ function VerifiedProfileScreen({ navigate, showToast, isVerified }: ScreenProps 
             <ShieldCheck className="h-7 w-7" />
           </div>
           <div>
-            <h2 className="text-[18px] font-extrabold text-emerald-700">Your profile is verified</h2>
+            <h2 className="text-[18px] font-extrabold text-emerald-700">Verified</h2>
             <p className="mt-1 text-[14px] font-semibold leading-6 text-ink/75">
-              We’ve verified this profile using simulated selfie and profile matching to help keep SafeMatch safe.
+              Live check passed. No media saved.
             </p>
           </div>
         </div>
       </div>
       <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-3 py-4 shadow-sm">
-        <h2 className="px-1 text-[17px] font-bold text-ink">Profile Highlights</h2>
+        <h2 className="px-1 text-[17px] font-bold text-ink">Profile</h2>
         <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 text-center">
           <Highlight Icon={GraduationCap} title="Education" value={verifiedProfile.status} />
           <Highlight Icon={MapPin} title="Location" value={verifiedProfile.location} />
@@ -1384,7 +1380,7 @@ function VerifiedProfileScreen({ navigate, showToast, isVerified }: ScreenProps 
       </div>
       <div className="mt-6 space-y-3">
         <PrimaryButton onClick={() => navigate("trust_indicator")} leftIcon={Shield}>View Trust Score</PrimaryButton>
-        <SecondaryButton onClick={() => showToast("Prototype simulation: messaging is not active.")} leftIcon={MessageCircle} rightIcon={null}>
+        <SecondaryButton onClick={() => showToast("Messaging is not active.")} leftIcon={MessageCircle} rightIcon={null}>
           Message
         </SecondaryButton>
       </div>
@@ -1406,7 +1402,7 @@ function TrustIndicatorScreen({ navigate, showToast }: ScreenProps) {
   return (
     <section className="pb-6">
       <ScreenHeader onBack={() => navigate("verified_profile")} />
-      <ScreenTitle title="Trust Indicator" subtitle="See how trustworthy this profile is." compact />
+      <ScreenTitle title="Trust Score" subtitle="Sara is verified." compact />
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-4">
           <ProfileAvatar verified />
@@ -1423,9 +1419,6 @@ function TrustIndicatorScreen({ navigate, showToast }: ScreenProps) {
       </div>
       <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
         <TrustGauge score={verifiedProfile.trustScore} />
-        <p className="mt-3 text-[15px] font-semibold leading-6 text-ink/75">
-          This profile has a strong trust score. You can feel confident connecting.
-        </p>
       </div>
       <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
         {verificationChecklist.map((item, index) => (
@@ -1436,12 +1429,12 @@ function TrustIndicatorScreen({ navigate, showToast }: ScreenProps) {
           </div>
         ))}
       </div>
-      <LinkButton className="mt-5" onClick={() => showToast("Trust score is based on simulated verification signals for prototype testing.")} icon={ArrowRight}>
-        Learn how this works
+      <LinkButton className="mt-5" onClick={() => showToast("Based on local prototype signals.")} icon={ArrowRight}>
+        How it works
       </LinkButton>
       <div className="mt-5 space-y-3">
-        <PrimaryButton onClick={() => showToast("Prototype simulation: chat is not active.")}>Continue to Chat</PrimaryButton>
-        <SecondaryButton onClick={() => navigate("unverified_warning")}>View Unverified Example</SecondaryButton>
+        <PrimaryButton onClick={() => showToast("Chat is not active.")}>Continue to Chat</PrimaryButton>
+        <SecondaryButton onClick={() => navigate("unverified_warning")}>View Warning</SecondaryButton>
       </div>
     </section>
   );
@@ -1474,10 +1467,10 @@ function UnverifiedWarningScreen({ navigate, showToast }: ScreenProps) {
     <section className="pb-6">
       <ScreenHeader />
       <ScreenTitle
-        title="Unverified Warning"
+        title="Unverified"
         subtitle={
           <>
-            Proceed with <span className="font-extrabold text-caution">caution.</span>
+            Proceed with <span className="font-extrabold text-caution">caution</span>.
           </>
         }
       />
@@ -1507,17 +1500,17 @@ function UnverifiedWarningScreen({ navigate, showToast }: ScreenProps) {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-caution">
           <ShieldAlert className="h-8 w-8" />
         </div>
-        <h2 className="mt-4 text-[22px] font-extrabold leading-tight text-caution">This profile is not verified.</h2>
+        <h2 className="mt-4 text-[22px] font-extrabold leading-tight text-caution">Not verified</h2>
         <p className="mt-3 text-[15px] font-semibold leading-6 text-ink/75">
-          We couldn’t confirm this user’s identity. Be careful when communicating and avoid sharing personal information or investing too much time.
+          Avoid sharing personal details.
         </p>
       </div>
       <div className="mt-6 space-y-3">
         <PrimaryButton tone="warning" onClick={() => navigate("report_fake_profile")} leftIcon={Flag}>Report Profile</PrimaryButton>
-        <SecondaryButton tone="warning" onClick={() => showToast("Prototype simulation: proceed carefully.")} leftIcon={ShieldAlert}>
+        <SecondaryButton tone="warning" onClick={() => showToast("Proceed carefully.")} leftIcon={ShieldAlert}>
           Continue Carefully
         </SecondaryButton>
-        <LinkButton onClick={() => navigate("verify_profile")}>Learn About Verification</LinkButton>
+        <LinkButton onClick={() => navigate("verify_profile")}>Verify</LinkButton>
       </div>
       <PaginationDots active={0} tone="orange" />
     </section>
@@ -1547,15 +1540,12 @@ function ReportFakeProfileScreen({
   return (
     <section className="pb-6">
       <ScreenHeader onBack={() => navigate("unverified_warning")} />
-      <ScreenTitle title="Report Fake Profile" subtitle="Help us keep the community safe." compact />
+      <ScreenTitle title="Report Profile" subtitle="Choose a reason." compact />
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-start gap-4">
           <IconBubble Icon={ShieldAlert} className="bg-blue-50" iconClass="text-ocean" />
           <div>
-            <h2 className="text-[18px] font-extrabold leading-6 text-ink">Why are you reporting this profile?</h2>
-            <p className="mt-1 text-[14px] font-medium leading-5 text-ink/65">
-              Select the option that best describes the issue.
-            </p>
+            <h2 className="text-[18px] font-extrabold leading-6 text-ink">Reason</h2>
           </div>
         </div>
 
@@ -1594,9 +1584,6 @@ function ReportFakeProfileScreen({
           <label htmlFor="report-details" className="text-[16px] font-extrabold text-ink">
             Add details <span className="font-semibold text-ink/55">(optional)</span>
           </label>
-          <p className="mt-1 text-[14px] font-medium leading-5 text-ink/65">
-            Provide any additional information that can help us understand the issue.
-          </p>
           <div className="relative mt-3">
             <textarea
               id="report-details"
@@ -1612,7 +1599,7 @@ function ReportFakeProfileScreen({
         </div>
       </div>
       <InfoNote className="mt-5" tone="blue">
-        Your report is saved locally in this browser for prototype testing only.
+        Saved locally only.
       </InfoNote>
       <div className="mt-6">
         <PrimaryButton onClick={onSubmit}>Submit Report</PrimaryButton>
@@ -1625,7 +1612,7 @@ function ReportConfirmationScreen({ navigate, onDone }: ScreenProps & { onDone: 
   return (
     <section className="pb-6">
       <ScreenHeader />
-      <ScreenTitle title="Report Confirmation" compact />
+      <ScreenTitle title="Report Sent" compact />
       <div className="mx-auto mt-7 flex h-24 w-24 items-center justify-center rounded-2xl bg-emerald-50 text-aqua">
         <Check className="h-14 w-14" strokeWidth={4} />
       </div>
@@ -1633,11 +1620,10 @@ function ReportConfirmationScreen({ navigate, onDone }: ScreenProps & { onDone: 
         <h2 className="mt-6 text-[34px] font-extrabold leading-none text-navy">
           Thank you!
         </h2>
-        <p className="mt-4 text-[18px] font-extrabold text-ink">Your report has been submitted.</p>
-        <p className="mt-2 text-[15px] font-medium leading-6 text-ink/70">We will review it and take action if needed.</p>
+        <p className="mt-4 text-[18px] font-extrabold text-ink">Saved locally.</p>
       </div>
       <InfoNote className="mt-6" tone="blue">
-        Prototype simulation only. Report saved locally in your browser only.
+        Prototype data stays in this browser.
       </InfoNote>
       <div className="mt-6 space-y-3">
         <PrimaryButton onClick={onDone} rightIcon={Check}>Done</PrimaryButton>
@@ -1751,18 +1737,18 @@ function TestingPanel({
             className="flex w-full items-center gap-2 px-4 py-3 text-left text-[14px] font-extrabold text-ink"
           >
             <Database className="h-4 w-4 text-ocean" />
-            <span className="flex-1">Prototype Data</span>
+            <span className="flex-1">Data</span>
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
           {open ? (
             <div className="border-t border-blue-100 px-4 py-4">
               <div className="grid grid-cols-2 gap-2 text-[12px]">
-                <DataPill label="Current screen" value={currentScreen} />
-                <DataPill label="Verification" value={verificationStatus} />
-                <DataPill label="Is verified" value={String(isVerified)} />
+                <DataPill label="Screen" value={currentScreen} />
+                <DataPill label="Status" value={verificationStatus} />
+                <DataPill label="Verified" value={String(isVerified)} />
                 <DataPill label="Reports" value={String(reports.length)} />
-                <DataPill label="Last reason" value={selectedReportReason || "None"} />
-                <DataPill label="Last updated" value={formatTime(lastUpdated)} />
+                <DataPill label="Reason" value={selectedReportReason || "None"} />
+                <DataPill label="Updated" value={formatTime(lastUpdated)} />
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2">
                 <PanelButton onClick={() => setReportsOpen(true)} Icon={Eye}>Reports</PanelButton>
@@ -1770,7 +1756,7 @@ function TestingPanel({
                 <PanelButton onClick={onClear} Icon={Trash2} danger>Clear</PanelButton>
               </div>
               <div className="mt-4">
-                <p className="mb-2 text-[12px] font-extrabold uppercase text-ink/45">Testing Navigation</p>
+                <p className="mb-2 text-[12px] font-extrabold uppercase text-ink/45">Jump</p>
                 <div className="grid grid-cols-4 gap-2">
                   {testingScreens.map((screen) => (
                     <button
@@ -1851,8 +1837,7 @@ function ReportsModal({ reports, onClose }: { reports: MockReport[]; onClose: ()
           {reports.length === 0 ? (
             <div className="rounded-[20px] bg-blue-50/80 px-4 py-8 text-center">
               <FileReportIcon />
-              <p className="mt-3 text-[16px] font-extrabold text-ink">No local reports yet.</p>
-              <p className="mt-1 text-[14px] font-medium leading-6 text-ink/65">Submit a mock report to see it here.</p>
+              <p className="mt-3 text-[16px] font-extrabold text-ink">No reports yet.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1861,12 +1846,12 @@ function ReportsModal({ reports, onClose }: { reports: MockReport[]; onClose: ()
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-[16px] font-extrabold text-ink">{report.profileName}</h3>
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-extrabold text-emerald-700">
-                      {report.status}
+                      local
                     </span>
                   </div>
                   <p className="mt-2 text-[14px] font-extrabold text-ocean">{report.reason}</p>
                   <p className="mt-2 text-[13px] font-medium leading-5 text-ink/65">
-                    {report.details || "No extra details provided."}
+                    {report.details || "No details."}
                   </p>
                   <p className="mt-3 text-[11px] font-bold text-ink/45">{new Date(report.createdAt).toLocaleString()}</p>
                 </article>
