@@ -883,35 +883,54 @@ function VerificationProgressScreen({
   onCancel: () => void;
 }) {
   const canComplete = liveVerificationStatus === "passed";
+  const autoCompleteRef = useRef(false);
+  const progressPercent: Record<LiveVerificationStatus, number> = {
+    idle: 8,
+    requesting: 22,
+    active: 45,
+    checking: 78,
+    passed: 100,
+    blocked: 0,
+    unsupported: 0,
+  };
+
+  useEffect(() => {
+    if (!canComplete || autoCompleteRef.current) return undefined;
+
+    autoCompleteRef.current = true;
+    const timer = window.setTimeout(() => {
+      onComplete();
+    }, 1100);
+
+    return () => window.clearTimeout(timer);
+  }, [canComplete, onComplete]);
 
   return (
     <section className="pb-6">
       <ScreenHeader />
-      <ScreenTitle title="Live Verification" subtitle="Preview-only checks. Nothing is stored." compact />
+      <ScreenTitle title="Live Verification" subtitle="Camera check runs automatically. Nothing is stored." compact />
       <LiveVerificationCard
         status={liveVerificationStatus}
         onStatusChange={onLiveVerificationStatusChange}
         showToast={showToast}
-        onComplete={onComplete}
       />
       <div className="relative mt-9">
         <LeafSprig className="left-0 top-36 text-aqua" />
         <LeafSprig className="right-0 top-36 scale-x-[-1] text-blue-300" />
-        <ProgressRing percent={75} />
+        <ProgressRing percent={progressPercent[liveVerificationStatus]} />
       </div>
       <InfoNote className="mx-auto mt-5 max-w-[330px]">
-        This prototype checks device permission and liveness flow only. It does not verify a legal identity.
+        This prototype uses the live camera stream for a local visual check only. No photo or video is stored.
       </InfoNote>
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-        <StatusRow Icon={Camera} text="Camera preview or safe fallback" done={liveVerificationStatus === "active" || liveVerificationStatus === "checking" || canComplete} />
-        <StatusRow Icon={Eye} text="Presence check completed" done={canComplete} loading={liveVerificationStatus === "checking"} />
+        <StatusRow Icon={Camera} text="Live camera preview" done={liveVerificationStatus === "active" || liveVerificationStatus === "checking" || canComplete} loading={liveVerificationStatus === "requesting"} />
+        <StatusRow Icon={Eye} text="Automatic presence check" done={canComplete} loading={liveVerificationStatus === "checking"} />
         <StatusRow Icon={Lock} text="No media saved or uploaded" done={canComplete} last />
       </div>
       <div className="mt-6 space-y-3">
-        {!canComplete ? (
-          <p className="text-center text-[14px] font-extrabold text-ink/55">Complete the live privacy check before finishing.</p>
-        ) : null}
-        <PrimaryButton disabled={!canComplete} onClick={onComplete} leftIcon={ShieldCheck}>Complete Verification</PrimaryButton>
+        <p className="text-center text-[14px] font-extrabold text-ink/55">
+          {canComplete ? "Verification passed. Opening the verified profile..." : "Keep your face centered while SafeMatch checks automatically."}
+        </p>
         <SecondaryButton onClick={onCancel} rightIcon={null}>Cancel</SecondaryButton>
       </div>
       <PaginationDots active={1} />
@@ -923,16 +942,20 @@ function LiveVerificationCard({
   status,
   onStatusChange,
   showToast,
-  onComplete,
 }: {
   status: LiveVerificationStatus;
   onStatusChange: (status: LiveVerificationStatus) => void;
   showToast: (message: string) => void;
-  onComplete: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const mountedRef = useRef(false);
+  const autoStartedRef = useRef(false);
+  const runIdRef = useRef(0);
+  const retryTimerRef = useRef<number | null>(null);
   const [noticeText, setNoticeText] = useState("");
+  const [analysisMessage, setAnalysisMessage] = useState("Starting secure camera preview...");
+  const [checkProgress, setCheckProgress] = useState(0);
 
   const stopStream = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -942,172 +965,333 @@ function LiveVerificationCard({
     }
   };
 
-  useEffect(() => stopStream, []);
+  const clearRetryTimer = () => {
+    if (retryTimerRef.current !== null) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  };
 
-  const startLivePreview = async () => {
+  const delay = (milliseconds: number) =>
+    new Promise<void>((resolve) => {
+      window.setTimeout(resolve, milliseconds);
+    });
+
+  const isRunCurrent = (runId: number) => mountedRef.current && runIdRef.current === runId;
+
+  const waitForVideoFrame = async (video: HTMLVideoElement, runId: number) => {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      if (!isRunCurrent(runId)) return false;
+      if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) return true;
+      await delay(120);
+    }
+
+    return false;
+  };
+
+  const detectFaceIfAvailable = async (video: HTMLVideoElement) => {
+    type FaceDetectorConstructor = new (options?: { fastMode?: boolean; maxDetectedFaces?: number }) => {
+      detect: (source: HTMLVideoElement | HTMLCanvasElement) => Promise<unknown[]>;
+    };
+
+    const detectorConstructor = (window as typeof window & { FaceDetector?: FaceDetectorConstructor }).FaceDetector;
+    if (!detectorConstructor) return null;
+
+    try {
+      const detector = new detectorConstructor({ fastMode: true, maxDetectedFaces: 1 });
+      const faces = await detector.detect(video);
+      return faces.length > 0;
+    } catch {
+      return null;
+    }
+  };
+
+  const sampleVideoFrames = async (video: HTMLVideoElement, runId: number) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 96;
+    canvas.height = 72;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return null;
+
+    const samples: Array<{ brightness: number; contrast: number; motion: number }> = [];
+    let previousGray: number[] | null = null;
+
+    for (let frame = 0; frame < 20; frame += 1) {
+      if (!isRunCurrent(runId)) return null;
+      await delay(110);
+
+      if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) continue;
+
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const gray: number[] = [];
+      let total = 0;
+      let totalSquared = 0;
+
+      for (let index = 0; index < pixels.length; index += 16) {
+        const luminance = pixels[index] * 0.2126 + pixels[index + 1] * 0.7152 + pixels[index + 2] * 0.0722;
+        gray.push(luminance);
+        total += luminance;
+        totalSquared += luminance * luminance;
+      }
+
+      const brightness = total / gray.length;
+      const variance = Math.max(totalSquared / gray.length - brightness * brightness, 0);
+      const contrast = Math.sqrt(variance);
+      let motion = 0;
+
+      if (previousGray) {
+        for (let index = 0; index < gray.length; index += 1) {
+          motion += Math.abs(gray[index] - previousGray[index]);
+        }
+        motion /= gray.length;
+      }
+
+      previousGray = gray;
+      samples.push({ brightness, contrast, motion });
+      setCheckProgress(45 + Math.round(((frame + 1) / 20) * 45));
+    }
+
+    if (samples.length === 0) return null;
+
+    const average = (key: keyof (typeof samples)[number]) =>
+      samples.reduce((total, sample) => total + sample[key], 0) / samples.length;
+
+    return {
+      brightness: average("brightness"),
+      contrast: average("contrast"),
+      motion: average("motion"),
+      frames: samples.length,
+    };
+  };
+
+  const runAutomaticCheck = async (runId: number) => {
+    const video = videoRef.current;
+    if (!video || !isRunCurrent(runId)) return;
+
+    onStatusChange("checking");
     setNoticeText("");
+    setAnalysisMessage("Checking live frames automatically...");
+    setCheckProgress(45);
 
-    if (!navigator.mediaDevices?.getUserMedia) {
+    const [metrics, faceDetected] = await Promise.all([
+      sampleVideoFrames(video, runId),
+      detectFaceIfAvailable(video),
+    ]);
+
+    if (!isRunCurrent(runId)) return;
+
+    const readableVideo =
+      !!metrics &&
+      metrics.frames >= 8 &&
+      metrics.brightness > 18 &&
+      metrics.brightness < 245 &&
+      metrics.contrast > 4;
+
+    if (faceDetected === true || readableVideo) {
+      setCheckProgress(100);
+      setAnalysisMessage(faceDetected === true ? "Face detected. Verification passed." : "Live camera frames verified. Verification passed.");
+      await delay(450);
+      if (!isRunCurrent(runId)) return;
       stopStream();
       onStatusChange("passed");
-      setNoticeText("Camera preview is not available in this browser. SafeMatch used the prototype-safe fallback and stored no media.");
-      showToast("Prototype fallback used. No camera media was collected.");
+      showToast("Live camera check passed. No photo or video was saved.");
+      return;
+    }
+
+    onStatusChange("active");
+    setCheckProgress(35);
+    setNoticeText("The camera is open, but the image is too dark or unclear. Move into better light and keep your face centered.");
+    setAnalysisMessage("Waiting for a clearer live camera frame...");
+    clearRetryTimer();
+    retryTimerRef.current = window.setTimeout(() => {
+      if (isRunCurrent(runId)) {
+        void runAutomaticCheck(runId);
+      }
+    }, 1400);
+  };
+
+  const startLivePreview = async () => {
+    clearRetryTimer();
+    stopStream();
+    runIdRef.current += 1;
+    const runId = runIdRef.current;
+    setNoticeText("");
+    setCheckProgress(8);
+    setAnalysisMessage("Opening secure camera preview...");
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      onStatusChange("unsupported");
+      setCheckProgress(0);
+      setAnalysisMessage("Camera preview is not supported in this browser.");
+      setNoticeText("Use a browser with camera support, then open SafeMatch again. No media was collected.");
       return;
     }
 
     try {
       onStatusChange("requesting");
+      setAnalysisMessage("Waiting for camera permission...");
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
           facingMode: "user",
-          width: { ideal: 720 },
-          height: { ideal: 720 },
+          width: { ideal: 960 },
+          height: { ideal: 960 },
         },
       });
+
+      if (!isRunCurrent(runId)) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
 
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
+
+      const videoReady = videoRef.current ? await waitForVideoFrame(videoRef.current, runId) : false;
+      if (!videoReady || !isRunCurrent(runId)) return;
+
       onStatusChange("active");
-      showToast("Live preview started. No media is being recorded.");
+      setCheckProgress(35);
+      setAnalysisMessage("Camera is live. Keep your face centered.");
+      showToast("Live camera preview started. The check will run automatically.");
+      window.setTimeout(() => {
+        if (isRunCurrent(runId)) {
+          void runAutomaticCheck(runId);
+        }
+      }, 650);
     } catch {
       stopStream();
-      onStatusChange("passed");
-      setNoticeText("Camera preview was unavailable in this browser. SafeMatch used the prototype-safe fallback and stored no media.");
-      showToast("Prototype fallback used. No camera media was collected.");
+      onStatusChange("blocked");
+      setCheckProgress(0);
+      setAnalysisMessage("Camera access is blocked.");
+      setNoticeText("SafeMatch needs camera permission to show your face and run the live check. Allow camera access in the browser, then tap Retry Camera.");
     }
   };
 
-  const runLiveCheck = () => {
-    if (status !== "active") {
-      showToast("Start the live preview first.");
-      return;
+  useEffect(() => {
+    mountedRef.current = true;
+
+    if (!autoStartedRef.current) {
+      const autoStartTimer = window.setTimeout(() => {
+        if (!mountedRef.current || autoStartedRef.current) return;
+        autoStartedRef.current = true;
+        void startLivePreview();
+      }, 250);
+
+      return () => {
+        window.clearTimeout(autoStartTimer);
+        mountedRef.current = false;
+        runIdRef.current += 1;
+        clearRetryTimer();
+        stopStream();
+      };
     }
 
-    onStatusChange("checking");
-    window.setTimeout(() => {
+    return () => {
+      mountedRef.current = false;
+      runIdRef.current += 1;
+      clearRetryTimer();
       stopStream();
-      onStatusChange("passed");
-      showToast("Live check passed. Preview stopped and no media was saved.");
-    }, 1800);
-  };
-
-  const usePrototypeFallback = () => {
-    stopStream();
-    onStatusChange("passed");
-    setNoticeText("Prototype-safe fallback is ready. No camera media was collected or stored.");
-    showToast("Prototype fallback approved. No camera media was collected.");
-  };
+    };
+  }, []);
 
   const statusCopy: Record<LiveVerificationStatus, { title: string; text: string }> = {
     idle: {
-      title: "Ready for a live check",
-      text: "Start a camera preview, confirm you are present, then the stream is stopped.",
+      title: "Starting camera",
+      text: "SafeMatch will open the camera and run the check automatically.",
     },
     requesting: {
-      title: "Requesting permission",
-      text: "Your browser will ask for camera access. Audio is never requested.",
+      title: "Allow camera access",
+      text: "The preview uses video only. Audio is never requested.",
     },
     active: {
-      title: "Live preview active",
-      text: "Look at the camera. The prototype is previewing only, not recording.",
+      title: "Camera preview is live",
+      text: "Keep your face centered while the check starts.",
     },
     checking: {
-      title: "Checking live presence",
-      text: "Hold still for a moment while the local-only prototype check completes.",
+      title: "Checking automatically",
+      text: "SafeMatch is reading live frames locally. Nothing is saved.",
     },
     passed: {
-      title: "Verification check ready",
-      text: "You can complete verification. No image or video was stored.",
+      title: "Live check complete",
+      text: "The camera stream stopped. Opening your verified profile now.",
     },
     blocked: {
-      title: "Camera unavailable",
-      text: "You can allow camera permission or use the prototype fallback for testing.",
+      title: "Camera permission needed",
+      text: "Enable camera access so the prototype can display your face.",
     },
     unsupported: {
       title: "Camera not supported",
-      text: "This browser cannot run the live preview, so use the prototype fallback.",
+      text: "This browser cannot run the live preview.",
     },
   };
+  const cameraVisible = status === "requesting" || status === "active" || status === "checking";
+  const blocked = status === "blocked" || status === "unsupported";
 
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="relative h-44 bg-slate-50">
-        {status === "active" || status === "checking" ? (
-          <video
-            ref={videoRef}
-            className="h-full w-full object-cover"
-            muted
-            playsInline
-            autoPlay
-          />
-        ) : (
+      <div className="relative h-64 overflow-hidden bg-slate-950">
+        <video
+          ref={videoRef}
+          className={`absolute inset-0 h-full w-full scale-x-[-1] object-cover transition-opacity duration-300 ${cameraVisible ? "opacity-100" : "opacity-0"}`}
+          muted
+          playsInline
+          autoPlay
+        />
+        {!cameraVisible ? (
           <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-            <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${status === "passed" ? "bg-emerald-50 text-aqua" : "bg-blue-50 text-ocean"}`}>
-              {status === "passed" ? <ShieldCheck className="h-8 w-8" /> : <Camera className="h-8 w-8" />}
+            <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${status === "passed" ? "bg-emerald-50 text-aqua" : blocked ? "bg-orange-50 text-caution" : "bg-blue-50 text-ocean"}`}>
+              {status === "passed" ? <ShieldCheck className="h-8 w-8" /> : blocked ? <ShieldAlert className="h-8 w-8" /> : <Camera className="h-8 w-8" />}
             </div>
-            <p className="mt-3 text-[16px] font-extrabold text-ink">{statusCopy[status].title}</p>
-            <p className="mt-1 text-[13px] font-semibold leading-5 text-ink/60">{statusCopy[status].text}</p>
+            <p className="mt-3 text-[16px] font-extrabold text-white">{statusCopy[status].title}</p>
+            <p className="mt-1 text-[13px] font-semibold leading-5 text-white/70">{statusCopy[status].text}</p>
           </div>
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/25" />
+            <div className="absolute left-3 right-3 top-3 flex items-center justify-between gap-3">
+              <span className="rounded-full bg-white/90 px-3 py-1 text-[12px] font-extrabold text-ink">
+                {status === "checking" ? "Checking" : status === "requesting" ? "Permission" : "Live"}
+              </span>
+              <span className="rounded-full bg-emerald-400/95 px-3 py-1 text-[12px] font-extrabold text-white">No recording</span>
+            </div>
+            <div className="absolute inset-x-4 bottom-4 rounded-2xl bg-white/92 p-3 text-center shadow-soft backdrop-blur">
+              <p className="text-[14px] font-extrabold text-ink">{analysisMessage}</p>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-50">
+                <div className="h-full rounded-full bg-ocean transition-all duration-300" style={{ width: `${checkProgress}%` }} />
+              </div>
+            </div>
+          </>
         )}
         {status === "checking" ? (
-          <div className="absolute inset-0 grid place-items-center bg-ink/20 backdrop-blur-[2px]">
-            <div className="rounded-full bg-white/95 px-5 py-3 text-[15px] font-extrabold text-ink shadow-soft">Checking...</div>
+          <div className="pointer-events-none absolute inset-0 grid place-items-center bg-ink/10">
+            <div className="rounded-full bg-white/95 px-5 py-3 text-[15px] font-extrabold text-ink shadow-soft">Auto-checking...</div>
           </div>
         ) : null}
       </div>
       <div className="space-y-3 p-4">
-        {noticeText ? <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-[13px] font-extrabold leading-5 text-ocean">{noticeText}</p> : null}
-        {status === "passed" ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-[14px] font-extrabold text-aqua">
-              <ShieldCheck className="h-5 w-5" />
-              Ready to complete verification
-            </div>
-            <PrimaryButton
-              className="min-h-[50px] rounded-2xl text-[15px]"
-              onClick={onComplete}
-              leftIcon={ShieldCheck}
-              rightIcon={ArrowRight}
-            >
-              Finish Verification
-            </PrimaryButton>
-          </div>
+        {noticeText ? <p className={`rounded-2xl border px-4 py-3 text-[13px] font-extrabold leading-5 ${blocked ? "border-orange-100 bg-orange-50 text-caution" : "border-blue-100 bg-blue-50 text-ocean"}`}>{noticeText}</p> : null}
+        {blocked ? (
+          <PrimaryButton
+            className="min-h-[50px] rounded-2xl text-[15px]"
+            onClick={startLivePreview}
+            leftIcon={Camera}
+            rightIcon={ArrowRight}
+          >
+            Retry Camera
+          </PrimaryButton>
         ) : (
-          <>
-            <PrimaryButton
-              className="min-h-[50px] rounded-2xl text-[15px]"
-              onClick={usePrototypeFallback}
-              leftIcon={ShieldCheck}
-              rightIcon={Check}
-            >
-              Use Prototype Fallback
-            </PrimaryButton>
-            <div className="grid grid-cols-2 gap-3">
-              <SecondaryButton
-                className="min-h-[50px] rounded-[16px] text-[15px]"
-                onClick={startLivePreview}
-                leftIcon={Camera}
-                rightIcon={null}
-              >
-                Start Preview
-              </SecondaryButton>
-              <SecondaryButton
-                className="min-h-[50px] rounded-[16px] text-[15px]"
-                onClick={runLiveCheck}
-                leftIcon={Eye}
-                rightIcon={null}
-              >
-                Run Check
-              </SecondaryButton>
-            </div>
-          </>
+          <div className="flex items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 py-3 text-[14px] font-extrabold text-ocean">
+            {status === "passed" ? <ShieldCheck className="h-5 w-5 text-aqua" /> : <Eye className="h-5 w-5" />}
+            {status === "passed" ? "Passed. Redirecting..." : "Automatic check in progress"}
+          </div>
         )}
         <p className="text-center text-[12px] font-bold leading-5 text-ink/45">
-          Privacy guardrail: this screen never writes camera media to localStorage.
+          Privacy guardrail: video frames are checked in memory only and are never stored.
         </p>
       </div>
     </div>
