@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  color: #0b2458;
-  background: #f1f5f9;
+  color: #111827;
+  background: #e5e7eb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,14 +17,14 @@
 
 html {
   min-height: 100%;
-  background: #f1f5f9;
+  background: #e5e7eb;
 }
 
 body {
   min-height: 100%;
   margin: 0;
   overflow-x: hidden;
-  background: #f1f5f9;
+  background: #e5e7eb;
   font-family:
     Inter,
     ui-sans-serif,
@@ -44,24 +44,39 @@ button {
   cursor: pointer;
 }
 
+.font-extrabold,
+.font-black {
+  font-weight: 700;
+}
+
+.rounded-xl {
+  border-radius: 8px;
+}
+
+.rounded-2xl,
+.rounded-\[18px\],
+.rounded-\[20px\],
+.rounded-\[24px\],
+.rounded-\[28px\] {
+  border-radius: 8px;
+}
+
+.desktop-qr-card {
+  border-radius: 8px;
+}
+
 .safe-scroll {
   flex: none;
   min-height: 0;
   overflow-y: visible;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(11, 111, 243, 0.28) transparent;
+  scrollbar-width: none;
   overscroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
 
 .safe-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.safe-scroll::-webkit-scrollbar-thumb {
-  background: rgba(11, 111, 243, 0.26);
-  border-radius: 999px;
+  display: none;
 }
 
 .phone-frame {
@@ -82,23 +97,31 @@ button {
 }
 
 @media (min-width: 640px) {
+  .desktop-shell {
+    background:
+      linear-gradient(90deg, rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+      linear-gradient(135deg, #eef2f7 0%, #dbe3ec 100%);
+    background-size: 48px 48px, 48px 48px, auto;
+  }
+
   .phone-frame {
     display: block;
     width: min(430px, max(360px, calc((100dvh - 32px) * 0.5)));
     height: min(calc(100dvh - 32px), 932px);
     min-height: 0;
     padding: 8px;
-    border-radius: 40px;
-    background: #111827;
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+    border-radius: 34px;
+    background: #0f172a;
+    box-shadow: 0 22px 52px rgba(15, 23, 42, 0.24);
   }
 
   .phone-screen {
     min-height: 0;
     height: 100%;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.78);
-    border-radius: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    border-radius: 26px;
     box-shadow: none;
   }
 
@@ -114,8 +137,8 @@ button {
     top: 7px;
     z-index: 40;
     display: block;
-    width: 70px;
-    height: 5px;
+    width: 58px;
+    height: 4px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.18);
     transform: translateX(-50%);
@@ -209,9 +232,9 @@ button {
   position: absolute;
   width: 34px;
   height: 34px;
-  border-left: 4px solid #14d6a3;
-  border-top: 4px solid #14d6a3;
-  border-top-left-radius: 10px;
+  border-left: 3px solid #10b981;
+  border-top: 3px solid #10b981;
+  border-top-left-radius: 8px;
 }
 
 .loading-dots {
@@ -220,6 +243,24 @@ button {
   border: 4px dotted #0b6ff3;
   border-radius: 999px;
   animation: spin 1.15s linear infinite;
+}
+
+.document-scan-line {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.95);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.72);
+  animation: scanDocument 1.35s ease-in-out infinite alternate;
+}
+
+@keyframes scanDocument {
+  to {
+    transform: translateY(88px);
+  }
 }
 
 @keyframes spin {
@@ -234,8 +275,8 @@ button {
 }
 
 .profile-avatar {
-  background: linear-gradient(135deg, #dcecff, #ffffff);
-  box-shadow: inset 0 0 0 1px rgba(11, 111, 243, 0.08);
+  background: linear-gradient(135deg, #e2e8f0, #ffffff);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
 }
 
 .mini-avatar {
