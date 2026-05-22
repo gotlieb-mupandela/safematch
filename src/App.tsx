@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent, PointerEvent, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
@@ -41,6 +41,7 @@ import {
 
 const screenIds = [
   "welcome",
+  "swipe_profiles",
   "verify_profile",
   "verification_progress",
   "verified_profile",
@@ -64,6 +65,31 @@ type MockReport = {
   status: "submitted-local-only";
 };
 
+type SwipeAction = "like" | "pass";
+
+type SwipeProfile = {
+  id: string;
+  name: string;
+  age: number;
+  status: string;
+  location: string;
+  interests: string[];
+  verified: boolean;
+  trustScore: number;
+  trustLevel: "High" | "Medium" | "Low";
+  joined?: string;
+  accent: "blue" | "mint" | "violet" | "orange";
+};
+
+type SwipeRecord = {
+  id: string;
+  profileId: string;
+  profileName: string;
+  action: SwipeAction;
+  verified: boolean;
+  createdAt: string;
+};
+
 const STORAGE_PREFIX = "safematch_";
 const KEYS = {
   currentScreen: "safematch_current_screen",
@@ -72,6 +98,7 @@ const KEYS = {
   selectedReportReason: "safematch_selected_report_reason",
   reportDetails: "safematch_report_details",
   reports: "safematch_reports",
+  swipes: "safematch_swipes",
   lastUpdated: "safematch_last_updated",
 } as const;
 
@@ -101,6 +128,24 @@ const unverifiedProfile = {
   avatarType: "blurred/suspicious",
 };
 
+const swipeProfiles: SwipeProfile[] = [
+  { id: "profile_sara", name: "Sara", age: 24, status: "Student", location: "Windhoek", interests: ["Books", "Hiking", "Travel"], verified: true, trustScore: 92, trustLevel: "High", accent: "mint" },
+  { id: "profile_mika", name: "Mika", age: 23, status: "Design student", location: "Windhoek", interests: ["Art", "Coffee", "Music"], verified: true, trustScore: 88, trustLevel: "High", accent: "blue" },
+  { id: "profile_talia", name: "Talia", age: 22, status: "Nursing student", location: "Windhoek", interests: ["Gym", "Movies", "Food"], verified: true, trustScore: 90, trustLevel: "High", accent: "violet" },
+  { id: "profile_neo", name: "Neo", age: 25, status: "Developer", location: "Windhoek", interests: ["Tech", "Gaming", "Running"], verified: true, trustScore: 86, trustLevel: "High", accent: "blue" },
+  { id: "profile_lina", name: "Lina", age: 21, status: "Student", location: "Windhoek", interests: ["Dance", "Fashion", "Travel"], verified: true, trustScore: 93, trustLevel: "High", accent: "mint" },
+  { id: "profile_eli", name: "Eli", age: 26, status: "Photographer", location: "Windhoek", interests: ["Photos", "Road trips", "Jazz"], verified: true, trustScore: 84, trustLevel: "High", accent: "violet" },
+  { id: "profile_amina", name: "Amina", age: 24, status: "Teacher", location: "Windhoek", interests: ["Reading", "Cooking", "Soccer"], verified: true, trustScore: 91, trustLevel: "High", accent: "mint" },
+  { id: "profile_jaden", name: "Jaden", age: 27, status: "Entrepreneur", location: "Windhoek", interests: ["Business", "Fitness", "Podcasts"], verified: true, trustScore: 82, trustLevel: "High", accent: "blue" },
+  { id: "profile_nora", name: "Nora", age: 20, status: "Student", location: "Windhoek", interests: ["Anime", "Makeup", "Beach"], verified: true, trustScore: 89, trustLevel: "High", accent: "violet" },
+  { id: "profile_kai", name: "Kai", age: 28, status: "Chef", location: "Windhoek", interests: ["Food", "Hiking", "Comedy"], verified: true, trustScore: 87, trustLevel: "High", accent: "orange" },
+  { id: "profile_zara", name: "Zara", age: 23, status: "Marketing intern", location: "Windhoek", interests: ["TikTok", "Events", "Dogs"], verified: true, trustScore: 94, trustLevel: "High", accent: "mint" },
+  { id: "profile_daniel", name: "Daniel", age: 29, status: "Engineer", location: "Windhoek", interests: ["Cars", "Braai", "Cycling"], verified: true, trustScore: 85, trustLevel: "High", accent: "blue" },
+  { id: "profile_alex", name: "Alex", age: 25, status: "Student", location: "Windhoek", interests: ["Crypto", "Travel", "Nightlife"], verified: false, trustScore: 28, trustLevel: "Low", joined: "May 2024", accent: "orange" },
+  { id: "profile_sky", name: "Sky", age: 24, status: "Model", location: "Windhoek", interests: ["Photos", "Luxury", "DMs"], verified: false, trustScore: 34, trustLevel: "Low", joined: "April 2024", accent: "orange" },
+  { id: "profile_chris", name: "Chris", age: 27, status: "Trader", location: "Windhoek", interests: ["Investing", "Travel", "Cars"], verified: false, trustScore: 31, trustLevel: "Low", joined: "May 2024", accent: "orange" },
+];
+
 const verificationChecklist = [
   "ID/selfie verified",
   "Selfie match confirmed",
@@ -118,6 +163,7 @@ const reportReasons = [
 
 const testingScreens: Array<{ id: ScreenId; label: string }> = [
   { id: "welcome", label: "Welcome" },
+  { id: "swipe_profiles", label: "Swipe" },
   { id: "verify_profile", label: "Verify" },
   { id: "verification_progress", label: "Progress" },
   { id: "verified_profile", label: "Verified" },
@@ -137,6 +183,18 @@ function isVerificationStatus(value: string | null): value is VerificationStatus
 
 function loadReports(): MockReport[] {
   const raw = localStorage.getItem(KEYS.reports);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function loadSwipes(): SwipeRecord[] {
+  const raw = localStorage.getItem(KEYS.swipes);
   if (!raw) return [];
 
   try {
@@ -185,6 +243,7 @@ export default function App() {
   );
   const [reportDetails, setReportDetails] = useState(() => localStorage.getItem(KEYS.reportDetails) || "");
   const [reports, setReports] = useState<MockReport[]>(loadReports);
+  const [swipes, setSwipes] = useState<SwipeRecord[]>(loadSwipes);
   const [lastUpdated, setLastUpdated] = useState(() => localStorage.getItem(KEYS.lastUpdated) || "");
   const [toast, setToast] = useState("");
   const [reportValidation, setReportValidation] = useState("");
@@ -312,6 +371,29 @@ export default function App() {
     showToast("Report saved locally.");
   };
 
+  const recordSwipe = (profile: SwipeProfile, action: SwipeAction) => {
+    const record: SwipeRecord = {
+      id: `swipe_${Date.now()}`,
+      profileId: profile.id,
+      profileName: profile.name,
+      action,
+      verified: profile.verified,
+      createdAt: new Date().toISOString(),
+    };
+    const nextSwipes = [...swipes, record];
+    setSwipes(nextSwipes);
+    localStorage.setItem(KEYS.swipes, JSON.stringify(nextSwipes));
+    touch();
+    showToast(action === "like" ? `Liked ${profile.name}` : `Passed ${profile.name}`);
+  };
+
+  const resetSwipeDeck = () => {
+    setSwipes([]);
+    localStorage.setItem(KEYS.swipes, JSON.stringify([]));
+    touch();
+    showToast("Swipe deck reset.");
+  };
+
   const clearReportDraft = () => {
     setSelectedReportReason("");
     setReportDetails("");
@@ -333,11 +415,13 @@ export default function App() {
     setReportDetails("");
     setReportValidation("");
     setLiveVerificationStatus("idle");
+    setSwipes([]);
     localStorage.setItem(KEYS.currentScreen, "welcome");
     localStorage.setItem(KEYS.verificationStatus, "not_started");
     localStorage.setItem(KEYS.isVerified, "false");
     localStorage.setItem(KEYS.selectedReportReason, "");
     localStorage.setItem(KEYS.reportDetails, "");
+    localStorage.setItem(KEYS.swipes, JSON.stringify([]));
     touch();
     scrollToTop();
     showToast("Prototype reset.");
@@ -354,6 +438,7 @@ export default function App() {
     setSelectedReportReason("");
     setReportDetails("");
     setReports([]);
+    setSwipes([]);
     setLastUpdated("");
     setReportValidation("");
     setLiveVerificationStatus("idle");
@@ -368,6 +453,15 @@ export default function App() {
     };
 
     switch (currentScreen) {
+      case "swipe_profiles":
+        return (
+          <SwipeProfilesScreen
+            {...common}
+            swipes={swipes}
+            onSwipe={recordSwipe}
+            onResetDeck={resetSwipeDeck}
+          />
+        );
       case "verify_profile":
         return <VerifyProfileScreen {...common} onStart={startVerification} />;
       case "verification_progress":
@@ -404,7 +498,7 @@ export default function App() {
       default:
         return <WelcomeScreen {...common} />;
     }
-  }, [currentScreen, isVerified, liveVerificationStatus, reportDetails, reportValidation, selectedReportReason, reports]);
+  }, [currentScreen, isVerified, liveVerificationStatus, reportDetails, reportValidation, selectedReportReason, reports, swipes]);
 
   return (
     <>
@@ -421,6 +515,7 @@ export default function App() {
                 verificationStatus={verificationStatus}
                 isVerified={isVerified}
                 reports={reports}
+                swipes={swipes}
                 selectedReportReason={selectedReportReason}
                 lastUpdated={lastUpdated}
                 onNavigate={navigate}
@@ -721,9 +816,9 @@ function WelcomeScreen({ navigate, showToast }: ScreenProps) {
       </p>
 
       <div className="mt-6 space-y-3">
-        <PrimaryButton onClick={() => navigate("verify_profile")}>Get Started</PrimaryButton>
-        <SecondaryButton onClick={() => showToast("Check profiles before chatting.")}>
-          Learn More
+        <PrimaryButton onClick={() => navigate("swipe_profiles")} leftIcon={Heart}>Start Swiping</PrimaryButton>
+        <SecondaryButton onClick={() => navigate("verify_profile")} leftIcon={ShieldCheck}>
+          Verify Me
         </SecondaryButton>
       </div>
       <PaginationDots active={0} />
@@ -791,6 +886,221 @@ function FeatureCard({ Icon, title, text }: { Icon: LucideIcon; title: string; t
       <h2 className="mt-3 text-[14px] font-extrabold leading-5 text-ink">{title}</h2>
       <p className="mt-1 text-[12px] font-semibold leading-4 text-ink/55">{text}</p>
     </div>
+  );
+}
+
+function SwipeProfilesScreen({
+  navigate,
+  showToast,
+  swipes,
+  onSwipe,
+  onResetDeck,
+}: ScreenProps & {
+  swipes: SwipeRecord[];
+  onSwipe: (profile: SwipeProfile, action: SwipeAction) => void;
+  onResetDeck: () => void;
+}) {
+  const [drag, setDrag] = useState({ active: false, startX: 0, startY: 0, x: 0, y: 0 });
+  const currentIndex = Math.min(swipes.length, swipeProfiles.length);
+  const currentProfile = swipeProfiles[currentIndex];
+  const nextProfile = swipeProfiles[currentIndex + 1];
+  const verifiedCount = swipeProfiles.filter((profile) => profile.verified).length;
+  const unverifiedCount = swipeProfiles.length - verifiedCount;
+  const likedCount = swipes.filter((swipe) => swipe.action === "like").length;
+
+  const finishSwipe = (action: SwipeAction) => {
+    if (!currentProfile) return;
+
+    onSwipe(currentProfile, action);
+    setDrag({ active: false, startX: 0, startY: 0, x: 0, y: 0 });
+
+    if (!currentProfile.verified && action === "like") {
+      showToast("Unverified profile.");
+    }
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!currentProfile) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag({ active: true, startX: event.clientX, startY: event.clientY, x: 0, y: 0 });
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!drag.active) return;
+    setDrag((value) => ({
+      ...value,
+      x: event.clientX - value.startX,
+      y: Math.max(Math.min(event.clientY - value.startY, 48), -48),
+    }));
+  };
+
+  const handlePointerUp = () => {
+    if (!drag.active) return;
+
+    if (drag.x > 92) {
+      finishSwipe("like");
+      return;
+    }
+
+    if (drag.x < -92) {
+      finishSwipe("pass");
+      return;
+    }
+
+    setDrag({ active: false, startX: 0, startY: 0, x: 0, y: 0 });
+  };
+
+  const rotation = drag.x / 18;
+  const intent = drag.x > 45 ? "LIKE" : drag.x < -45 ? "PASS" : "";
+
+  return (
+    <section className="pb-6">
+      <ScreenHeader />
+      <ScreenTitle title="Swipe" subtitle={`${verifiedCount} verified · ${unverifiedCount} unverified`} compact />
+
+      <div className="mt-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-[13px] font-extrabold text-ink/60 shadow-sm">
+        <span>{currentIndex + 1 > swipeProfiles.length ? swipeProfiles.length : currentIndex + 1}/{swipeProfiles.length}</span>
+        <span>{likedCount} liked</span>
+        <button type="button" onClick={onResetDeck} className="text-ocean">Reset</button>
+      </div>
+
+      <div className="relative mt-5 h-[398px]">
+        {nextProfile ? <SwipeProfileCard profile={nextProfile} depth="back" /> : null}
+        {currentProfile ? (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={`Swipe ${currentProfile.name}`}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            className="absolute inset-0 cursor-grab touch-none select-none active:cursor-grabbing"
+            style={{
+              transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
+              transition: drag.active ? "none" : "transform 180ms ease",
+            }}
+          >
+            {intent ? (
+              <div
+                className={`absolute top-5 z-20 rounded-2xl border-2 px-4 py-2 text-[22px] font-black tracking-wide ${
+                  intent === "LIKE"
+                    ? "right-5 rotate-12 border-emerald-400 bg-white/90 text-aqua"
+                    : "left-5 -rotate-12 border-orange-400 bg-white/90 text-caution"
+                }`}
+              >
+                {intent}
+              </div>
+            ) : null}
+            <SwipeProfileCard profile={currentProfile} depth="front" onWarning={() => navigate("unverified_warning")} />
+          </div>
+        ) : (
+          <div className="grid h-full place-items-center rounded-[28px] border border-blue-100 bg-white p-6 text-center shadow-sm">
+            <div>
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-aqua">
+                <CheckCircle2 className="h-9 w-9" />
+              </div>
+              <h2 className="mt-4 text-[24px] font-extrabold text-ink">Deck complete</h2>
+              <p className="mt-2 text-[14px] font-semibold text-ink/55">{likedCount} liked · {swipes.length - likedCount} passed</p>
+              <div className="mt-5">
+                <PrimaryButton onClick={onResetDeck} leftIcon={RotateCcw}>Reset Deck</PrimaryButton>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <SecondaryButton tone="warning" onClick={() => finishSwipe("pass")} leftIcon={X} rightIcon={null}>
+          Pass
+        </SecondaryButton>
+        <PrimaryButton onClick={() => finishSwipe("like")} leftIcon={Heart}>
+          Like
+        </PrimaryButton>
+      </div>
+      <LinkButton className="mt-5" onClick={() => navigate("verify_profile")} icon={ShieldCheck}>Verify me</LinkButton>
+    </section>
+  );
+}
+
+function SwipeProfileCard({
+  profile,
+  depth,
+  onWarning,
+}: {
+  profile: SwipeProfile;
+  depth: "front" | "back";
+  onWarning?: () => void;
+}) {
+  const accentClass = {
+    blue: "from-blue-500 to-ocean",
+    mint: "from-aqua to-emerald-400",
+    violet: "from-violet-500 to-blue-500",
+    orange: "from-orange-400 to-caution",
+  }[profile.accent];
+
+  return (
+    <article
+      className={`absolute inset-0 overflow-hidden rounded-[28px] border bg-white shadow-xl ${
+        profile.verified ? "border-blue-100" : "border-orange-200"
+      } ${depth === "back" ? "translate-y-4 scale-[0.95] opacity-60" : ""}`}
+    >
+      <div className={`relative h-48 bg-gradient-to-br ${accentClass}`}>
+        <div className="absolute inset-0 bg-white/10" />
+        <div className="absolute left-5 top-5">
+          <ProfileAvatar verified={profile.verified} suspicious={!profile.verified} size="large" />
+        </div>
+        <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-3 text-white">
+          <div className="min-w-0">
+            <h2 className="truncate text-[30px] font-extrabold leading-none">{profile.name}, {profile.age}</h2>
+            <p className="mt-2 flex items-center gap-1.5 text-[14px] font-bold text-white/85">
+              <MapPin className="h-4 w-4" />
+              {profile.location}
+            </p>
+          </div>
+          <span className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-extrabold ${profile.verified ? "bg-white text-aqua" : "bg-white text-caution"}`}>
+            {profile.verified ? "Verified" : "Unverified"}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[16px] font-extrabold text-ink">{profile.status}</p>
+            {profile.joined ? <p className="mt-1 text-[12px] font-bold text-ink/45">Joined {profile.joined}</p> : null}
+          </div>
+          <div className={`rounded-2xl px-3 py-2 text-center ${profile.verified ? "bg-emerald-50 text-aqua" : "bg-orange-50 text-caution"}`}>
+            <p className="text-[20px] font-extrabold leading-none">{profile.trustScore}</p>
+            <p className="text-[10px] font-black uppercase">Trust</p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {profile.interests.map((interest) => (
+            <span key={interest} className="rounded-full bg-blue-50 px-3 py-1.5 text-[12px] font-extrabold text-ink/65">
+              {interest}
+            </span>
+          ))}
+        </div>
+
+        {!profile.verified ? (
+          <button
+            type="button"
+            onClick={onWarning}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-[14px] font-extrabold text-caution"
+          >
+            <ShieldAlert className="h-5 w-5" />
+            View warning
+          </button>
+        ) : (
+          <div className="mt-5 flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-[14px] font-extrabold text-aqua">
+            <ShieldCheck className="h-5 w-5" />
+            SafeMatch verified
+          </div>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -1704,6 +2014,7 @@ function TestingPanel({
   verificationStatus,
   isVerified,
   reports,
+  swipes,
   selectedReportReason,
   lastUpdated,
   onNavigate,
@@ -1714,6 +2025,7 @@ function TestingPanel({
   verificationStatus: VerificationStatus;
   isVerified: boolean;
   reports: MockReport[];
+  swipes: SwipeRecord[];
   selectedReportReason: string;
   lastUpdated: string;
   onNavigate: (screen: ScreenId) => void;
@@ -1747,6 +2059,7 @@ function TestingPanel({
                 <DataPill label="Status" value={verificationStatus} />
                 <DataPill label="Verified" value={String(isVerified)} />
                 <DataPill label="Reports" value={String(reports.length)} />
+                <DataPill label="Swipes" value={String(swipes.length)} />
                 <DataPill label="Reason" value={selectedReportReason || "None"} />
                 <DataPill label="Updated" value={formatTime(lastUpdated)} />
               </div>
