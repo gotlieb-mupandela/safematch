@@ -551,8 +551,8 @@ function AmbientDecor() {
 
 function DesktopQrPanel() {
   return (
-    <aside className="desktop-qr-panel hidden w-[360px] shrink-0 lg:block">
-      <div className="desktop-qr-card border border-white/80 bg-white/90 p-6 shadow-soft backdrop-blur">
+    <aside className="desktop-qr-panel hidden w-[340px] shrink-0 lg:block xl:w-[360px]">
+      <div className="desktop-qr-card flex h-full flex-col justify-center overflow-hidden border border-white/80 bg-white/90 p-5 shadow-soft backdrop-blur">
         <div className="flex items-start gap-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-ocean">
             <SafeMatchMark className="h-7 w-7" />
@@ -567,15 +567,15 @@ function DesktopQrPanel() {
           Scan this code to launch the hosted prototype on a mobile device.
         </p>
 
-        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-inner">
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-inner">
           <img
             src="/safematch-demo-qr.svg"
             alt={`QR code for ${DEMO_URL}`}
-            className="mx-auto h-60 w-60 rounded-lg bg-white p-3"
+            className="mx-auto h-52 w-52 rounded-lg bg-white p-3 xl:h-56 xl:w-56"
           />
         </div>
 
-        <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+        <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
           <QrCode className="h-4 w-4 shrink-0 text-slate-500" />
           <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-600">{DEMO_URL}</p>
         </div>
@@ -584,13 +584,13 @@ function DesktopQrPanel() {
           href={DEMO_URL}
           target="_blank"
           rel="noreferrer"
-          className="mt-5 flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-ocean bg-ocean px-4 py-3 text-[14px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
+          className="mt-4 flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-ocean bg-ocean px-4 py-3 text-[14px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
         >
-          Open link
+          Open prototype
           <ExternalLink className="h-4 w-4" />
         </a>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 text-[12px] font-medium text-slate-500">
+        <div className="mt-3 grid grid-cols-2 gap-3 text-[12px] font-medium text-slate-500">
           <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
             Hosted demo
           </div>

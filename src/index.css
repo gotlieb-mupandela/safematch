@@ -145,6 +145,12 @@ button {
   }
 }
 
+@media (min-width: 1024px) {
+  .desktop-qr-panel {
+    height: min(calc(100dvh - 32px), 932px);
+  }
+}
+
 .corner-wash {
   position: absolute;
   border-radius: 42% 58% 55% 45%;
